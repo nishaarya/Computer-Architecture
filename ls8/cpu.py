@@ -6,7 +6,28 @@ class CPU:
     """Main CPU class."""
 
     def __init__(self):
-        """Construct a new CPU."""
+        self.register = {k:0 for k in range(0,8)}
+        self.register["R7"] = 0xF4
+        self.pc = 0
+        self.fl = None
+        self.ram = [0]*256
+
+        self.alu_ops = {
+            '0000':'ADD',
+            '0001':'SUB',
+            '0010':'MUL',
+            '0011':'DIV',
+            '0100':'MOD',
+            '0101':'INC',
+            '0110':'DEC',
+            '0111':'CMP',
+            '1000':'AND',
+            '1001':'NOT',
+            '1010':'OR',
+            '1011':'XOR',
+            '1100':'SHL',
+            '1101':'SHR'
+        }
         pass
 
     def load(self):
