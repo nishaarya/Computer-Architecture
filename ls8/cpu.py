@@ -5,59 +5,81 @@ import sys
 class CPU:
     """Main CPU class."""
 
+    # Implement the CPU constructor
     def __init__(self):
-        self.register = {k:0 for k in range(0,8)}
-        self.register["R7"] = 0xF4
+        self.registers = [0] * 8
         self.pc = 0
-        self.fl = None
-        self.ram = [0]*256
+        self.ram = [0] * 256
+        self.halted = False
+        self.register[7] = 0xF4
+        self.sp = 7
 
-        self.alu_ops = {
-            '0000':'ADD',
-            '0001':'SUB',
-            '0010':'MUL',
-            '0011':'DIV',
-            '0100':'MOD',
-            '0101':'INC',
-            '0110':'DEC',
-            '0111':'CMP',
-            '1000':'AND',
-            '1001':'NOT',
-            '1010':'OR',
-            '1011':'XOR',
-            '1100':'SHL',
-            '1101':'SHR'
-        }
-        pass
+		# Construct a branch table
+        # create a dictionary for the branch table
+        self.branch_table = {}
+        self.branch_table[LDI] = self.ldi
+        self.branch_table[PRN] = self.prn
+        self.branch_table[MUL] = self.mul
+        self.branch_table[PUSH] = self.push
+        self.branch_table[POP] = self.pop
+    
+    # Add RAM functions:
+    # ram_read() - should accept the address to read and return the value stored there.
+    # ram_write() - should accept a value to write, and the address to write it to.
+
+    def ram_read(self, MAR):
+        value = self.ram[MAR]
+        return value
+
+    def ram_write(self, MDR, MAR):
+        self.ram[MAR] = MDR
+    
+    # Add the LDI instruction
+    # load "immediate", store a value in a register, or "set this register to this value".
+    def LDI(self):
+        self.registers[self.ram_read(self.pc+1)] = self.ram_read(self.pc+2)
+
+    # Add the PRN instruction
+    # a pseudo-instruction that prints the numeric value stored in a register.
+    def PRN(self):
+        print(self.registers[self.ram_read(self.pc+1)])
+
+    # Implement the HLT instruction handler
+    # halt the CPU and exit the emulator.
+    def HLT(self):
+        self.halted = True
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+    # Un-hardcode the machine code
+        # Open a file
+        with open(sys.argv[1]) as f:
+            for line in f:
+                # Remove '#' from output
+                value = line.split("#")[0].strip()
+                # Remove empty space from output
+                if value == '':
+                    continue
+                v = int(value, 2)
+                # Here we load it to memory
+                self.ram[address] = v
+                # Then we move on to the next
+                address += 1
+            
+        
 
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+            self.registers[reg_a] += self.registers[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.registers[reg_a] *= self.registers[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -81,6 +103,26 @@ class CPU:
 
         print()
 
+    # Implement the core of run()
     def run(self):
-        """Run the CPU."""
-        pass
+        # if it is not ending
+        while not self.halted:
+            # IR is the instruction register
+            IR = self.ram_read(self.pc)
+            # PC+1 and PC+2 from RAM into variables operand_a and operand_b
+            operand_a = self.read_ram(self.pc + 1)
+            operand_b = self.read_ram(self.pc + 2)
+            
+            # If the instruction register is ending
+            if IR == HLT:
+                # then end
+                halted = True
+            # or if the instruction register has an instruction to do
+            elif IR in self.branch_table:
+                # the instructions are in the branch_table
+                # it will then run through operand_a and operand_b
+                self.branch_table[IR](operand_a, operand_b)
+                self.pc += (IR >> 6) + 1
+            else:
+                print("Instruction not recognized")
+                sys.exit(1) 
